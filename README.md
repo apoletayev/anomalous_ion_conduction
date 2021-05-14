@@ -1,12 +1,25 @@
-# anomalous_ion_conduction
+# Simulation and Analyses for "Defect-Driven Anomalous Transport in Fast-Ion Conducting Solid Electrolytes"
 
 ## Summary
 
-Supporting code and sample data for manuscript on anomalous ion transport in beta''- and beta-aluminas.
+This reponsitory contains the code scripts and sample data for the manuscript "Defect-Driven Anomalous Transport in Fast-Ion Conducting Solid Electrolytes", which is undergoing peer review as of May 13, 2021.
 
-## Dependencies
+The large-scale classical molecular dynamics simulations are run via [LAMMPS](https://lammps.sandia.gov). Full datasets are not included.
 
-Supporting functions are collected in ```hop_utils.py``` and ```crystal_utils.py```. Module dependencies are:
+Disclaimer: we do not claim this is good code. This work has been a learning experience more than anything else.
+
+## Contents
+
+- ```sample_data```: two sample datasets, one for Na beta"-alumina, and one for Ag beta-alumina.
+- ```sherlock_scripts```: shell, python, and LAMMPS scripts for running simulations and extracting hopping events and statistical descriptors of transport.
+- ```structures```: sample crystal structures with quasi-randomly generated distributions of defect atoms.
+- ```templates```: template files for generating crystal structures.
+- ```utils```: supporting python functions.
+- python scripts: generating crystal structures for simulation, and making figures in the manuscript.
+
+## Dependencies and Used Codes
+
+Python module dependencies are:
 
 - [numpy](https://pypi.org/project/numpy/)
 - [scipy](https://pypi.org/project/scipy/)
@@ -16,12 +29,14 @@ Supporting functions are collected in ```hop_utils.py``` and ```crystal_utils.py
 - [freud-analysis](https://pypi.org/project/freud-analysis/)
 - [seaborn](https://pypi.org/project/seaborn/)
 
-Dependencies can be installed via ```requirements.txt``` :
+Python dependencies can be installed via ```requirements.txt``` :
 ```
 pip install -r requirements.txt
 ```
 
-I also cite [batlow](https://www.fabiocrameri.ch/batlow/) for a perception-optimized color scheme.
+Parallelization of several analyses is done with [parallel](https://www.gnu.org/software/parallel/).
+
+We also cite [batlow](https://www.fabiocrameri.ch/batlow/) for a perception-optimized color scheme.
 
 ## Workflow
 
@@ -33,23 +48,23 @@ Python scripts using ```networkx``` and ```freud``` sample random configurations
 
 ### LAMMPS Simulation
 
-Sample LAMMPS input files are included. These are easy to modify for multiple mobile ions and temperatures using only variable declarations at the beginnings of the files. Because of [sherlock](https://sherlock.stanford.edu) job duration limitations, [restarting](https://lammps.sandia.gov/doc/restart.html) and recursion was used for long simulations. Shell scripts for slurm are included.
+Sample LAMMPS input files are included. These are easy to modify for multiple mobile ions and temperatures using only variable declarations at the beginnings of the files. Because of [sherlock](https://sherlock.stanford.edu) job duration limitations, [restarting](https://lammps.sandia.gov/doc/restart.html) was used for 100-nanosecond-long simulations. Shell scripts for slurm are included.
 
 ### Processing Trajectories
 
-LAMMPS trajectories for mobile ions and their center of mass are parsed to individual atom trajectories. Then, hopping events are identified as boundary crossings using the input LAMMPS crystal structures; this relies on the two-dimensional nature of conduction and neglects small motions of the host atoms.
+LAMMPS trajectories for mobile ions and their center of mass are parsed to individual atom trajectories. Then, hopping events within each two-dimensional conduction plane are identified as boundary crossings using the input LAMMPS crystal structures; this relies on the two-dimensional nature of conduction and ignores small motions of the host atoms. Then the hopping events from individual conduction planes within each simulation are combined.
 
-Statistical descriptors of transport are computed from the trajectories of mobile ions: mean-square displacements, non-Gaussian parameter, distribution of displacements along [100], self part of the van Hove function, ergodicity breaking parameter.
+Statistical descriptors of transport are computed from the trajectories of mobile ions: mean-square displacements and [non-Gaussian parameter](sherlock_scripts/shell_scripts/parse-r2a2-2d.sh) in two dimensions, [distribution of displacements](sherlock_scripts/shell_scripts/parse-dx.sh) along [100], self part of the [van Hove](sherlock_scripts/shell_scripts/calc-vanhove.sh) function, and [ergodicity breaking](sherlock_scripts/shell_scripts/parse-eb.sh) parameter.
 
-Python scripts and shell scripts for this are included.
+Python scripts and shell scripts for this are included in ```sherlock_scripts```.
 
 ### Manuscript Figures
 
-Python code for manuscript figures is included ```make_structure_[micro/macro].py```. The "micro" script deals with atomistic hopping events, and the "macro" script deals with statistical descriptors.
+Python code for manuscript figures is included ```manuscript_figures_[micro/macro].py```. The "micro" script deals with atomistic hopping events, and the "macro" script deals with statistical descriptors.
 
 The "micro" script compiles a .csv listing of all simulation planes, which is used by the "macro" script.
 
-As it is not possible to include all data, most figure-making blocks/cells will not immediately run.
+As it is not possible to include all data via GitHub, most figure-making blocks/cells will not immediately run.
 
 ## Sample Data
 

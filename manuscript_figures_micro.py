@@ -92,7 +92,7 @@ try: del planes_data
 except : pass
 
 # =============================================================================
-# %% Block 1: Compile a database of files each of which stores hop events.
+# %% Block 2: Compile a database of files each of which stores hop events.
 # ## This only screens for files that have 'plane.csv' in their name
 # ## (Currently planes are organized into folders where they share a folder
 # ## with only one lammps structure file. Crude, I know.)
@@ -214,78 +214,6 @@ for root, dirs, files in os.walk('./sample_data/'):
 ## sort and save
 planes_df = pd.DataFrame(dicts).sort_values(by=['phase','metal','config','T1','z'], axis=0)   
 planes_df.to_csv('./sample_data/all_hop_planes.csv', index=False)
-
-# =============================================================================
-# %% Block 2: combine planes based on lammps files: iterate through 
-# ## all lammps files and combine planes if:
-# ## (a) there is not a 'z_all' plane and 
-# ## (b) all needed single planes exist
-# ## NOTE: this does not deal with there being multiples of planes at a same z
-# ## in the same folder, they just get added together. 
-# ## This is not good, because to do it properly will require re-naming ions.
-# ## IMPORTANT:
-# ## After running this (if generating new z_all planes), re-run the previous 
-# ## block to actually add them to the "registry"
-# =============================================================================
-
-all_planes = pd.read_csv('./sample_data/all_hop_planes.csv')
-
-lammps_files = all_planes.lammps_path.unique()
-
-for lf in lammps_files:
-    
-    ## query one lammps file
-    this_file = lf.split('/')[-1]
-    one_file_planes = all_planes.query('lammps_path == @lf')
-    mm = one_file_planes.metal.unique()[0]
-    
-    ## load the lammps file (default is fractional coordinates)
-    try: 
-        print(f'\nLoading {this_file}')
-        _, _, cell, atoms = cu.read_lmp(lf)
-        
-        ## ignore oxygen defects: remove the max() of types that are oxygen
-        if len( atoms.query('atom == "O"').type.unique() ) > 1:
-            type_ointer = atoms.query('atom == "O"').type.max()
-            atoms = atoms.query('type != @type_ointer')
-            
-        ## get all conduction planes and the number of sites in them
-        planes = cu.get_conduction_planes(atoms,mm,inexact=False if 'beta' in lf else True)
-        site_pts = cu.get_mobile_ion_sites(atoms, planes[0])
-        polys = len(site_pts)
-        print(f'File has {polys} sites per plane')
-    except:
-        print(f'could not load lammps file: {lf}')
-        continue
-    
-    ## get all possible z coordinates for planes in this lammps file
-    planes = [cu.standard_plane_name(p) for p in planes]
-    
-    ## iterate over temperatures
-    for T1 in one_file_planes.T1.unique():
-        
-        ## get all planes by z at this temperature
-        T1_planes = one_file_planes.query('T1 == @TK')
-        # print(type(T1_planes.z.unique()[0]), T1_planes.z.unique())
-        these_zs = [f'{int(x):03d}' if hu.s2n(str(x)) else x for x in T1_planes.z.unique()]
-    
-        ## check for a complete combined plane
-        if 'z_all' in these_zs :
-            print(f"Already combined planes for {this_file} at T1 = {T1:4d}K.")
-            continue
-        
-        ## if the planes are not already combined, check that all planes have hop files
-        else:
-            if sum([p in these_zs for p in planes]) == len(planes):
-                ## looks like hops in all planes are available. combine planes 
-                print(f"Combining planes for {this_file} at T1 = {T1:4d}K.")
-                planes_list = T1_planes.hop_path.values.tolist()
-                planes_folder = '/'.join(planes_list[0].split('/')[:-1])
-                zs_list = T1_planes.z.values.tolist()
-                combined = hu.combine_planes3(planes_list, zs_list, numpolys=polys, verbose=True)
-                combined_path = planes_folder + '/' + mm + str(T1) + 'K_z_allplane.csv'
-                combined.to_csv(combined_path, index=False)
-
 
 # =============================================================================
 # %% Figure 5: pre-load data so it does not take time every time
