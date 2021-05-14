@@ -60,7 +60,7 @@ Python scripts and shell scripts for this are included in ```sherlock_scripts```
 
 ### Manuscript Figures
 
-Python code for manuscript figures is included ```make_structure_[micro/macro].py```. The "micro" script deals with atomistic hopping events, and the "macro" script deals with statistical descriptors.
+Python code for manuscript figures is included ```manuscript_figures_[micro/macro].py```. The "micro" script deals with atomistic hopping events, and the "macro" script deals with statistical descriptors.
 
 The "micro" script compiles a .csv listing of all simulation planes, which is used by the "macro" script.
 
