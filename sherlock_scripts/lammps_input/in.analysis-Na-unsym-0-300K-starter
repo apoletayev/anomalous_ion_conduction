@@ -1,0 +1,282 @@
+##########################################################
+# ---------- Parameters for Sweeps --------------------- #
+##########################################################
+
+## THIS RELIES ON A VARIABLE, iter, to be passed via the command line
+
+clear                           ## make LAMMPS start from "fresh" with defaults
+variable metal string 'Na'      ## metal for sweeps
+variable stoich string 'unsym'       ## stoichiometry in the name of the input structure file
+variable exclude equal 0        ## [sites], min distance btwn defects in the input structure file
+variable T1 equal 300           ## [K], the steady-state temperature
+
+variable fname string ${metal}-${stoich}-${exclude}-${T1}K-${iter} ## filename to write out
+
+##########################################################
+# ---------------------- Cell -------------------------- # 
+##########################################################
+
+## clear statement moved to parameters section upstream -AP 2020/03/08
+
+units           metal                               ## eV,atomic charge,AA,ps,K,bar,g/mol, volt/AA
+dimension 3                                         ## dimensinality (3D)
+boundary p p p                                      ## periodic boundaries
+atom_style charge                                 ## define the atom style, James had 'full' and an extra column in the structure file
+read_data ${metal}_bdp_${stoich}_${exclude}.lmp    ## read structure file
+group sodium type 1           ## define species 1 as sodium (all mobile ions) 
+group alumin type 2           ## define species 2 as aluminium
+group oxygen type 3           ## define species 3 as oxygen
+group magnes type 4           ## define species 4 as oxygen interstitials
+
+## define a lot of sub-regions: the numbers are specific to beta for now.
+
+region p1 block INF INF INF INF 5.4   5.7 units box  ## 016 conduction plane
+region p2 block INF INF INF INF 16.6 16.9 units box  ## 050 conduction plane
+region p3 block INF INF INF INF 27.7 28.0 units box  ## 083 conduction plane
+region planes union 3 p1 p2 p3                       ## combine planes 
+
+group planeatoms region planes              ## create a group for in-plane atoms
+group oplane intersect planeatoms oxygen    ## in-plane oxygens
+
+region b1 block INF INF INF INF INF  5.4  units box ## bottom block
+region b2 block INF INF INF INF 5.7  16.6 units box ## block between 012-037 planes
+region b3 block INF INF INF INF 16.9 27.7 units box ## block between 037-062 planes
+region b4 block INF INF INF INF 28.0 INF  units box ## top block
+region blocks union 4 b1 b2 b3 b4
+
+group blockatoms region blocks              ## create a group for in-block atoms
+group oblock intersect blockatoms oxygen    ## in-block oxygens
+
+## set a variable that reads out the time in ps in the output
+variable Timer equal step*dt
+
+#########################################################
+# --------- Pair styles and electrostatics ------------ #
+#########################################################
+
+pair_style buck/coul/long 12.0      ## defines the potential style, Buckingham with long-range Coulombic, cutoff 12 angstroms
+pair_coeff * *  0.0 1.0 0.0         ## defaults undefined short-range interactions (e.g. Al-Al interaction) to zero
+
+if "${metal} == Na" then &
+"pair_coeff 1 1  9597.4 0.16789 0" &
+"pair_coeff 1 2  15240.7 0.14620 0" &
+"pair_coeff 1 3  1226.8 0.30650 0" &
+elif "${metal} == K" &
+"pair_coeff 1 1  2189.19 0.1916 0" &
+"pair_coeff 1 2  13751.9 0.1463 0" &
+"pair_coeff 1 3  958.21 0.3603  0" &
+elif "${metal} == Ag" &
+"pair_coeff 1 1  1335.89 0.1424 0" &
+"pair_coeff 1 2  14326.6 0.1411 0" &
+"pair_coeff 1 3  1417.03 0.2851 0" &
+else quit
+## if metal is not right, quit right now
+
+pair_coeff 2 3  1460.3 0.29912 0        ## interaction between Al and O
+                                        ## undefined interaction btwn Al-Al above
+                                        ## undefined interaction btwn Al-Mg above
+
+pair_coeff 3 3  22764.0 0.149 27.88     ## interaction between O and O
+pair_coeff 3 4  1152.0  0.3065 0        ## interaction between O and Mg
+
+kspace_style pppm 1e-05 #defines the solver for Coulombic interactions, something you shouldn't have to change
+
+########################################################
+# -------------- Run Minimization -------------------- #
+########################################################
+
+# compute test_cs all temp/cs alumin oxygen
+
+reset_timestep 0   #static minimisation of atoms
+timestep 0.5       #timestep, never had to change for minimisation
+thermo 10          #how often results are printed out in output
+thermo_style custom step enthalpy fmax lx ly lz vol press   #what is printed out in output
+min_style cg     #minimisation style - conjugate gradient
+minimize 1e-25 1e-25 5000 10000   #minimisation parameters-  stopping energy, stopping force, max steps for each
+
+########################################################
+# -------------- Relax Cell -------------------------- #
+########################################################
+
+reset_timestep 0   #minimisation of box size (lattice parameters)
+timestep 0.5
+fix 1 all box/relax aniso 1.0 vmax 0.003  #applies external pressure during minimisation vmax determines max change
+thermo 1
+thermo_style custom step enthalpy fmax lx ly lz vol press
+min_style cg
+minimize 1e-25 1e-25 5000 10000
+unfix 1      #an unfix is required to finish a fix
+
+########################################################
+# ---------------- Run NPT Anneal -------------------- #
+########################################################
+
+reset_timestep 0
+timestep 0.002
+velocity all create ${T1} 4928459 rot yes dist gaussian  # create velocities with random number generator
+fix 2 all npt temp ${T1} ${T1} 0.01 aniso 1.0 1.0 0.1  #npt run with T1 and P parameters
+thermo_style custom step v_Timer cpu temp etotal fmax lx ly lz vol press
+thermo 1000
+run 1000     #number of steps
+unfix 2
+
+fix anneal all npt temp ${T1} 1000 0.1 aniso 1.0 1.0 0.1  # npt heat to 1000K
+run 2000                                                  # heat over 4ps (step=2fs)
+unfix anneal
+
+fix hold all npt temp 1000 1000 0.1 aniso 1.0 1.0 0.1   # npt hold 1000K
+run 10000                                               # hold 20ps (step=2fs)
+unfix hold
+
+fix cool all npt temp 1000 ${T1} 0.1 aniso 1.0 1.0 0.1  # npt cool to run temp
+run 3000                                                # cool over 6ps (step=2fs)
+unfix cool
+
+#############################################
+# ------------- Run NVT T1 ---------------- #
+#############################################
+
+reset_timestep 0
+timestep 0.001                                  ## 1 femtosecond
+fix             3 all nvt temp ${T1} ${T1} 0.01 ## NVT run for temp defined above, 10fs damping
+thermo_style custom step v_Timer cpu temp etotal fmax vol press
+thermo 1000
+
+# short-time atom positions
+dump 55 sodium atom 1 traj_${fname}-${metal}-short.dat  ## dump mobile ion positions every 1 fs
+dump_modify 55 sort id
+
+# main mobile-ion trajectory
+dump 5 sodium atom 25 traj_${fname}-${metal}.dat  ## dump mobile ion positions every 25 fs
+dump_modify 5 sort id
+
+## output per-atom velocities of mobile ions for VACF's
+# dump        M_vels sodium custom 10 vels_${fname}-${metal}.dat id type vx vy vz
+# dump_modify M_vels sort id
+
+# dump        Oi_vels ointer custom 10 vels_${fname}-Oi.dat id type vx vy vz
+# dump_modify Oi_vels sort id
+
+# dump        Op_vels oplane custom 10 vels_${fname}-Op.dat id type vx vy vz
+# dump_modify Op_vels sort id
+
+compute a2 sodium msd/nongauss              ## compute r^2, r^4, and non-gaussian alpha^2 for the mobile ions
+fix a2_fix sodium ave/time 5 2 10 c_a2[1] c_a2[2] c_a2[3] file a2_ave_${fname}-${metal}.fix ave window 2 mode scalar ## write a2 to file
+# fix a2_fix sodium ave/time 5 5 25 c_a2[1] c_a2[2] c_a2[3] file a2_ave_long.fix ave window 2 mode scalar ## write a2 to file
+
+# # compute and write the M-M radial distribution function every 10fs
+# compute MM_rdf sodium rdf 160 cutoff 8       ## RDF Na-Na, later to be time-windowed (global, vector)
+# fix MM_rdf_ave sodium ave/time 1 5 5 c_MM_rdf[*] file m_m_rdf_${fname}.fix ave window 2 mode vector ## write RDF to file w/averaging
+
+# ## compute and write the M-Ointer radial distribution function every 10fs
+# compute MOi_rdf m_ointer rdf 160 1 4 cutoff 8       ## RDF Na-Ointer, later to be time-windowed (global, vector)
+# fix MOi_rdf_ave m_ointer ave/time 1 5 5 c_MOi_rdf[*] file m_oi_rdf_${fname}.fix ave window 2 mode vector ## write RDF to file w/averaging
+
+# ## compute and write the M-O (all) radial distribution function every 10fs
+# compute MO_rdf m_oall rdf 160 1 3* cutoff 8       ## RDF Na-O (all O), later to be time-windowed (global, vector)
+# fix MO_rdf_ave m_oall ave/time 1 5 5 c_MO_rdf[*] file m_o_rdf_${fname}.fix ave window 2 mode vector ## write RDF to file w/averaging
+
+# compute and write the Na-Everything radial distribution function every 10fs
+# compute M_rdf all rdf 160 1 * cutoff 8       ## RDF Na-everything, later to be time-windowed (global, vector)
+# fix M_rdf_ave all ave/time 1 5 5 c_M_rdf[*] file m_all_rdf_${fname}.fix ave window 2 mode vector ## write RDF to file w/averaging
+
+# compute by-element temperatures: only relevant when there is a pulse
+# compute temp_M sodium temp/com        ## M  temperature subtracting CoM velocity (global, scalar + vector)
+# compute temp_A alumin temp/com        ## Al temperature subtracting CoM velocity (global, scalar + vector)
+# compute temp_Ob oblock temp/com       ## Ob  temperature subtracting CoM velocity (global, scalar + vector)
+# compute temp_Op oplane temp/com       ## Op  temperature subtracting CoM velocity (global, scalar + vector)
+# compute temp_Oi ointer temp/com       ## Oi  temperature subtracting CoM velocity (global, scalar + vector)
+# fix temp_com all ave/time 1 5 5 c_temp_M c_temp_A c_temp_Ob c_temp_Op c_temp_Oi file temp_com_${fname}.fix
+
+## compute center-of-mass displacement: relevant with a pulse + for conductivity
+
+variable Alrcmx equal xcm(alumin,x)   ## center of mass position Al (global, scalar)
+variable Alvcmx equal vcm(alumin,x)   ## center of mass velocity Al (global, scalar)
+variable Alrcmy equal xcm(alumin,y)   ## center of mass position Al (global, scalar)
+variable Alvcmy equal vcm(alumin,y)   ## center of mass velocity Al (global, scalar)
+variable Alrcmz equal xcm(alumin,z)   ## center of mass position Al (global, scalar)
+variable Alvcmz equal vcm(alumin,z)   ## center of mass velocity Al (global, scalar)
+fix cm_alumin alumin ave/time 5 2 10 v_Alrcmx v_Alrcmy v_Alrcmz v_Alvcmx v_Alvcmy v_Alvcmz file cm_${fname}-Al.fix
+
+variable Orcmx equal xcm(oxygen,x)    ## center of mass position oxygen (global, scalar)
+variable Ovcmx equal vcm(oxygen,x)    ## center of mass velocity oxygen (global, scalar)
+variable Orcmy equal xcm(oxygen,y)    ## center of mass position oxygen (global, scalar)
+variable Ovcmy equal vcm(oxygen,y)    ## center of mass velocity oxygen (global, scalar)
+variable Orcmz equal xcm(oxygen,z)    ## center of mass position oxygen (global, scalar)
+variable Ovcmz equal vcm(oxygen,z)    ## center of mass velocity oxygen (global, scalar)
+fix cm_oxygen oxygen ave/time 1 1 10 v_Orcmx v_Orcmy v_Orcmz v_Ovcmx v_Ovcmy v_Ovcmz file cm_${fname}-O.fix
+# fix cm_oxygen oxygen ave/time 1 1 10 v_Ovcmx v_Ovcmy v_Ovcmz file cm_${fname}-O.fix
+
+# ## write Oi CoM position + velocity
+# variable oircmx equal xcm(ointer,x)      ## center of mass position sodium (global, scalar)
+# variable oivcmx equal vcm(ointer,x)      ## center of mass velocity sodium (global, scalar)
+# variable oircmy equal xcm(ointer,y)      ## center of mass position sodium (global, scalar)
+# variable oivcmy equal vcm(ointer,y)      ## center of mass velocity sodium (global, scalar)
+# variable oircmz equal xcm(ointer,z)      ## center of mass position sodium (global, scalar)
+# variable oivcmz equal vcm(ointer,z)      ## center of mass velocity sodium (global, scalar)
+# fix cm_ointer ointer ave/time 5 2 10 v_oircmx v_oircmy v_oircmz v_oivcmx v_oivcmy v_oivcmz file cm_${fname}-Oi.fix
+
+## write Oplane CoM position + velocity
+variable oprcmx equal xcm(oplane,x)      ## center of mass position sodium (global, scalar)
+variable opvcmx equal vcm(oplane,x)      ## center of mass velocity sodium (global, scalar)
+variable oprcmy equal xcm(oplane,y)      ## center of mass position sodium (global, scalar)
+variable opvcmy equal vcm(oplane,y)      ## center of mass velocity sodium (global, scalar)
+variable oprcmz equal xcm(oplane,z)      ## center of mass position sodium (global, scalar)
+variable opvcmz equal vcm(oplane,z)      ## center of mass velocity sodium (global, scalar)
+fix cm_oplane oplane ave/time 5 2 10 v_oprcmx v_oprcmy v_oprcmz v_opvcmx v_opvcmy v_opvcmz file cm_${fname}-Op.fix
+
+## write Oblock CoM position + velocity
+variable obrcmx equal xcm(oblock,x)      ## center of mass position sodium (global, scalar)
+variable obvcmx equal vcm(oblock,x)      ## center of mass velocity sodium (global, scalar)
+variable obrcmy equal xcm(oblock,y)      ## center of mass position sodium (global, scalar)
+variable obvcmy equal vcm(oblock,y)      ## center of mass velocity sodium (global, scalar)
+variable obrcmz equal xcm(oblock,z)      ## center of mass position sodium (global, scalar)
+variable obvcmz equal vcm(oblock,z)      ## center of mass velocity sodium (global, scalar)
+fix cm_oblock oblock ave/time 5 2 10 v_obrcmx v_obrcmy v_obrcmz v_obvcmx v_obvcmy v_obvcmz file cm_${fname}-Ob.fix
+
+## write metal CoM position + velocity
+variable Mrcmx equal xcm(sodium,x)      ## center of mass position sodium (global, scalar)
+variable Mvcmx equal vcm(sodium,x)      ## center of mass velocity sodium (global, scalar)
+variable Mrcmy equal xcm(sodium,y)      ## center of mass position sodium (global, scalar)
+variable Mvcmy equal vcm(sodium,y)      ## center of mass velocity sodium (global, scalar)
+variable Mrcmz equal xcm(sodium,z)      ## center of mass position sodium (global, scalar)
+variable Mvcmz equal vcm(sodium,z)      ## center of mass velocity sodium (global, scalar)
+fix cm_metal sodium ave/time 5 2 10 v_Mrcmx v_Mrcmy v_Mrcmz v_Mvcmx v_Mvcmy v_Mvcmz file cm_${fname}-${metal}.fix
+
+## write plane CoM position + velocity
+variable prcmx equal xcm(planeatoms,x)      ## center of mass position sodium (global, scalar)
+variable pvcmx equal vcm(planeatoms,x)      ## center of mass velocity sodium (global, scalar)
+variable prcmy equal xcm(planeatoms,y)      ## center of mass position sodium (global, scalar)
+variable pvcmy equal vcm(planeatoms,y)      ## center of mass velocity sodium (global, scalar)
+variable prcmz equal xcm(planeatoms,z)      ## center of mass position sodium (global, scalar)
+variable pvcmz equal vcm(planeatoms,z)      ## center of mass velocity sodium (global, scalar)
+fix cm_plane planeatoms ave/time 5 2 10 v_prcmx v_prcmy v_prcmz v_pvcmx v_pvcmy v_pvcmz file cm_${fname}-plane.fix
+
+## write Mg CoM position + velocity 
+variable Mgrcmx equal xcm(magnes,x)      ## center of mass position sodium (global, scalar)
+variable Mgvcmx equal vcm(magnes,x)      ## center of mass velocity sodium (global, scalar)
+variable Mgrcmy equal xcm(magnes,y)      ## center of mass position sodium (global, scalar)
+variable Mgvcmy equal vcm(magnes,y)      ## center of mass velocity sodium (global, scalar)
+variable Mgrcmz equal xcm(magnes,z)      ## center of mass position sodium (global, scalar)
+variable Mgvcmz equal vcm(magnes,z)      ## center of mass velocity sodium (global, scalar)
+fix cm_magnes magnes ave/time 1 1 10 v_Mgrcmx v_Mgrcmy v_Mgrcmz v_Mgvcmx v_Mgvcmy v_Mgvcmz file cm_${fname}-Mg.fix
+# fix cm_magnes magnes ave/time 1 1 10 v_Mgvcmx v_Mgvcmy v_Mgvcmz file cm_${fname}-Mg.fix
+
+
+#############################################
+# -------- Start Actually Running --------- #
+#############################################
+
+## write restart file every 500 psec
+restart 500000 restart-${metal}-${stoich}-${exclude}-${T1}K
+
+run 	100000 upto  	## run 100 ps, should be enough to average the RDF and short C_D(t)
+undump 55       ## these are the atom positions for the short-time C_D(t)
+
+# unfix MM_rdf_ave	## stop outputting M-M  RDF
+# unfix MOi_rdf_ave	## stop outputting M-Oi RDF
+# unfix MO_rdf_ave	## stop outputting M-O RDF
+
+run     100000000 upto   ## run the remainder of 100ns in steady state
+
+unfix 3
