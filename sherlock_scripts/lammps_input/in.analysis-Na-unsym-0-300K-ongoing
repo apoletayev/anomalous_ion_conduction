@@ -13,19 +13,6 @@ variable T1 equal 300           ## [K], the steady-state temperature
 
 read_restart restart-${metal}-${stoich}-${exclude}-${T1}K.*      ## start the latest restart file
 
-variable field equal 0          ## field strength [GV/m]
-variable thetadeg equal 90      ## 0 is || x,  90 is || y
-variable phideg equal 0         ## 0 is || xy, 90 is || z
-
-variable oscillate equal v_field/10  ## temporal shape for E-field: none for PEPPEx
-variable theta equal v_thetadeg*3.1415926/180        ## theta=0 is x, theta=pi/2 is y
-variable phi   equal v_phideg*3.1415926/180          ## phi = 0 is x, phi = pi/2 is z
-
-variable Ex equal v_oscillate*cos(v_theta)*cos(v_phi)   ## E field in x direction
-variable Ey equal v_oscillate*sin(v_theta)*cos(v_phi)   ## E field in y direction
-variable Ez equal v_oscillate*sin(v_phi)                ## E field in z direction
-
-# variable fname string ${metal}-${stoich}-${exclude}-${T1}K-${field}GVm-${iter} ## filename to write out
 variable fname string ${metal}-${stoich}-${exclude}-${T1}K-${iter} ## filename to write out
 
 ##########################################################
@@ -72,8 +59,8 @@ fix             3 all nvt temp ${T1} ${T1} 0.01 ## NVT run for temp defined abov
 thermo_style custom step v_Timer cpu temp etotal fmax vol press
 thermo 1000
 
-# dump 4 all atom 50 traj_all_${fname}.dat          ## dump atom positions every 50 steps to traj.dat
-dump 5 sodium atom 25 traj_${fname}-${metal}.dat  ## dump mobile ion positions every 50 steps
+# main mobile-ion trajectory
+dump 5 sodium atom 25 traj_${fname}-${metal}.dat  ## dump mobile ion positions every 25 fs
 dump_modify 5 sort id
 
 ## output per-atom velocities of mobile ions for VACF's
@@ -196,65 +183,6 @@ fix cm_magnes magnes ave/time 1 1 10 v_Mgrcmx v_Mgrcmy v_Mgrcmz v_Mgvcmx v_Mgvcm
 ## write restart file every 500 ps
 restart 500000 restart-${metal}-${stoich}-${exclude}-${T1}K
 
-# run 	10000 upto  	## run 10 ps, should be enough to average the RDF
-# unfix MM_rdf_ave	## stop outputting M-M  RDF
-# unfix MOi_rdf_ave	## stop outputting M-Oi RDF
-# unfix MO_rdf_ave	## stop outputting M-O RDF
-
-## dump full cell (all atoms) to be averaged later for FEFF: this is the pre-pulse
-# dump prepump all atom 25 traj_${fname}-prepulse.dat  ## dump all ion positions every 5 steps
-# dump_modify prepump sort id
-
-# run 3000 upto
-# undump prepump
-
-#############################################
-# ---------- Apply Field in NVE ----------- #
-#############################################
-
-# unfix 3             ## finish NVT
-# fix 4 all nve       ## apply pulse in NVE
-
-## apply the field
-# fix             applyfield all efield v_Ex v_Ey v_Ez  # perturbation
-# thermo_style custom step v_Timer cpu temp etotal fmax press v_Ex v_Ey v_Ez pe ke fmax
-# thermo 10
-
-## dump full cell (all atoms) to be averaged later for FEFF: this is the pumped material
-# dump pumped all atom 5 traj_${fname}-pumped.dat  ## dump all ion positions every 5 steps
-# dump_modify pumped sort id
-
-# run   250   ## run simulation with applied field: this gets replaced in python
-# unfix applyfield   ## Turn off the field
-# undump pumped
-# thermo 50
-
-# run 4000 upto
-# thermo 250
-# run 5000 upto
-
-#############################################
-# ----- Long Running in Steady State ------ #
-#############################################
-
-# run     1000000 upto    ## run steady-state 1 ns
-
-# undump M_vels ## stop outputting mobile-ion velocities for VACF
-# undump Oi_vels
-# undump Op_vels
-
-# undump  6  ## stop outputting oxygen trajectories
-# undump  7  ## stop outputting oxygen trajectories
-# undump  8  ## stop outputting oxygen trajectories
-# unfix   a2op    ## stop outputting oxygen a2 and msd
-# unfix   a2oi    ## stop outputting oxygen a2 and msd
-# unfix   a2ob    ## stop outputting oxygen a2 and msd
-
-## stop outputting more stuff ... RDF / VACF
-
-# run      5000000 upto   ## might need to split trajectory files here
-
 run     100000000 upto   ## run the remainder of 100ns in steady state
 
-unfix 3     ## for simulations without pump
-# unfix 4
+unfix 3
