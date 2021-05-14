@@ -1,0 +1,6 @@
+phase,stoich,exclude,config,metal,T1,z,num_planes,total_time,hop_path,lammps_path
+beta,120,4,120_4,Ag,300,012,1,10000.0,./sample_data/beta-Ag/120_4/hops-Ag-120_4-300K/Ag300K_012plane.csv,./sample_data/beta-Ag/120_4/Agbeta120_4.lmp
+beta,120,4,120_4,Ag,300,037,1,9999.999999999998,./sample_data/beta-Ag/120_4/hops-Ag-120_4-300K/Ag300K_037plane.csv,./sample_data/beta-Ag/120_4/Agbeta120_4.lmp
+beta,120,4,120_4,Ag,300,062,1,10000.0,./sample_data/beta-Ag/120_4/hops-Ag-120_4-300K/Ag300K_062plane.csv,./sample_data/beta-Ag/120_4/Agbeta120_4.lmp
+beta,120,4,120_4,Ag,300,087,1,10000.0,./sample_data/beta-Ag/120_4/hops-Ag-120_4-300K/Ag300K_087plane.csv,./sample_data/beta-Ag/120_4/Agbeta120_4.lmp
+beta,120,4,120_4,Ag,300,z_all,4,10000.0,./sample_data/beta-Ag/120_4/hops-Ag-120_4-300K/Ag300K_z_allplane.csv,./sample_data/beta-Ag/120_4/Agbeta120_4.lmp
