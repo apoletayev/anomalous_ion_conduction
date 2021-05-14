@@ -52,7 +52,7 @@ random.seed(10)
 ## ===== parameters above, loading file below =====
 
 ## create a dummy output directory
-to_dir = f'./{metal_output} {rule}_{excl} {defect}-doped/'
+to_dir = f'./structures/{metal_output} {rule}_{excl} {defect}-doped/'
 if not os.path.exists(to_dir): os.makedirs(to_dir)
 
 ## read the input .CONFIG file
@@ -176,7 +176,7 @@ frac = False
 viz=True
 
 ## this is where the grids will be written
-to_dir = f'./{metal} {rule}_{excl} {defect}-doped/'
+to_dir = f'./structures/{metal} {rule}_{excl} {defect}-doped/'
 
 ## try importing a python-generated .lmp file
 fn = to_dir + f'{metal}_bdp_{rule}_{excl}.lmp'  ## this should be carried over from above
