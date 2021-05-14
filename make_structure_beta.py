@@ -39,7 +39,7 @@ packed = False
 ## calculate stoichiometry of the resulting phase for naming the output files below.
 stoich = 2 * num_ois_per_plane + 100
 
-to_dir = f'./{metal} {stoich}_{exclude}/' ## directory to which grids, files & distances are written
+to_dir = f'./structures/{metal} {stoich}_{exclude}/' ## directory to which grids, files & distances are written
 if not os.path.exists(to_dir): os.makedirs(to_dir)
 
 ## read the input .CONFIG file
@@ -149,7 +149,7 @@ metal = 'Na'  ## from above / default. All code uses Na as switching is easiest 
 frac = False  ## flag to load the atoms with fractional coordinates (if True)
 
 ## this is where the grids will be written
-to_dir = f'./{metal} {stoich}_{exclude}/'
+to_dir = f'./structures/{metal} {stoich}_{exclude}/'
 
 ## try importing a python-generated .lmp file
 fn = to_dir + f'{metal}beta{stoich}_{exclude}.lmp'  ## this should be carried over from above
