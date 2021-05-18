@@ -36,11 +36,11 @@ pip install -r requirements.txt
 
 Parallelization of several analyses is done with [parallel](https://www.gnu.org/software/parallel/).
 
-We also cite [batlow](https://www.fabiocrameri.ch/batlow/) for a perception-optimized color scheme.
+We have used the scientific color map [batlow](https://www.fabiocrameri.ch/batlow/) [(Crameri 2018)](https://doi.org/10.5281/zenodo.1243862) to prevent visual distortion of the data and exclusion of readers with color­ vision deficiencies [(Crameri et al., 2020)](https://www.nature.com/articles/s41467-020-19160-7).
 
 ## Workflow
 
-Python scripts are organized similar to jupyter notebooks, and are best run in blocks/cells using something like [spyder](https://www.spyder-ide.org/).
+Python scripts are organized similar to jupyter notebooks, and are best run in blocks/cells using the [spyder](https://www.spyder-ide.org/) IDE.
 
 ### Creating Simulation Structures
 
@@ -54,13 +54,11 @@ Sample LAMMPS input files are included. These are easy to modify for multiple mo
 
 LAMMPS trajectories for mobile ions and their center of mass are parsed to individual atom trajectories. Then, hopping events within each two-dimensional conduction plane are identified as boundary crossings using the input LAMMPS crystal structures; this relies on the two-dimensional nature of conduction and ignores small motions of the host atoms. Then the hopping events from individual conduction planes within each simulation are combined.
 
-Statistical descriptors of transport are computed from the trajectories of mobile ions: mean-square displacements and [non-Gaussian parameter](sherlock_scripts/shell_scripts/parse-r2a2-2d.sh) in two dimensions, [distribution of displacements](sherlock_scripts/shell_scripts/parse-dx.sh) along [100], self part of the [van Hove](sherlock_scripts/shell_scripts/calc-vanhove.sh) function, and [ergodicity breaking](sherlock_scripts/shell_scripts/parse-eb.sh) parameter.
-
-Python scripts and shell scripts for this are included in ```sherlock_scripts```.
+Statistical descriptors of transport are computed from the trajectories of mobile ions: mean-square displacements, fourth moment of displacements, and [non-Gaussian parameter](sherlock_scripts/shell_scripts/parse-r2a2-2d.sh) in two dimensions, [distribution of displacements](sherlock_scripts/shell_scripts/parse-dx.sh) along [100], self part of the [van Hove](sherlock_scripts/shell_scripts/calc-vanhove.sh) function, and [ergodicity breaking](sherlock_scripts/shell_scripts/parse-eb.sh) parameter. Python scripts and shell scripts for this are included in ```sherlock_scripts```.
 
 ### Manuscript Figures
 
-Python code for manuscript figures is included ```manuscript_figures_[micro/macro].py```. The "micro" script deals with atomistic hopping events, and the "macro" script deals with statistical descriptors.
+Python code for generating figures in the main text and supporting information of the manuscript is included ```manuscript_figures_[micro/macro].py```. The [micro script](manuscript_figures_micro.py) deals with atomistic hopping events, and the [macro script](manuscript_figures_macro.py) deals with statistical descriptors, including the key quantity diffusion kernel correlation.
 
 The "micro" script compiles a .csv listing of all simulation planes, which is used by the "macro" script.
 
@@ -69,5 +67,5 @@ As it is not possible to include all data via GitHub, most figure-making blocks/
 ## Sample Data
 
 Two sets of sample data are included. These are limited by GitHub constraints on the size of data files.
-- Na beta''-alumina 300 K. 20 ns of center-of-mass trajectory, 20 ns of hopping events, extracted statistical descriptors.
-- Ag beta-alumina 300 K. 20 ns of center-of-mass trajectory, 10 ns of hopping events, extracted statistical descriptors.
+- Na beta''-alumina 300 K. 20 ns of center-of-mass trajectory, 20 ns of hopping events, extracted statistical descriptors (from 100 ns of trajectories).
+- Ag beta-alumina 300 K. 20 ns of center-of-mass trajectory, 10 ns of hopping events, extracted statistical descriptors (from 100 ns of trajectories).
