@@ -293,10 +293,13 @@ na_bdp_unsym = True  ## trigger for making a broken axis for C_D(t) (Figure 2)
 ## parameters to transform the C_D and create the broken axes
 cd_break = 4.25
 cd_break_top = 4.6
-cd_scale = 2.
-# cd_offset = 0.4
-cd_true = 9
-cd_display = 6.8
+cd_scale = 2. # linear scaling factor; if > 1 makes transform look compressed
+cd_true = 9  # value that will show up as cd_display 
+cd_display = 6.8 # value at which in 
+
+# linear function that calculates an underlying transformed coordinate 
+# given y points from real data. 
+# maps cd_true to cd_display; true y-value at cd_true shows up as at cd_display
 cd_transform = lambda y : cd_display + (y - cd_true) / cd_scale
 
 ## new figure & counter for Gs fitting colors
@@ -666,30 +669,30 @@ for i, plane in macro_planes_data.iterrows():
     ax.plot(1e12/gs, int_fun(1e12/gs), marker=this_marker, mfc='yellow', mec='k', zorder=3, ls='', fillstyle='full')
     
 ## plot literature values:
+refs = {'Funke2007':52, 'Almond1984':32, 'Hoppe1991':51, 'Barker1976':44,
+        'Kamishima2014':30, 'Kamishima2015':31}
     
 ## Funke & Banhatti (2007) - 473K
 lit6 = pd.read_csv('./production/bdp-Na/Na_unsym_Funke2007_473K_lit.csv', names=['logfreq','sigma'])
-axes[0].scatter(10**lit6.logfreq, (10**lit6.sigma)/473, marker='o', edgecolors='k', 
-                facecolors='none', s=16, label='Ref. 47, 473K') ## Funke $\\it{et\ al.}$ (2007), ($Li_{Al}^{\prime\prime}$)
+axes[0].plot(10**lit6.logfreq, (10**lit6.sigma)/473, marker='o', mec='k', ls='', zorder=0, 
+                mfc='none', markersize=4, label=f'Ref. {refs["Funke2007"]}, 473K') ## Funke $\\it{et\ al.}$ (2007), ($Li_{Al}^{\prime\prime}$)
+## Hoppe & Funke (1991) - 220K
+lit2 = pd.read_csv('./production/bdp-Na/Na_unsym_Hoppe1991_220K_lit.csv', names=['logfreq','sigma'])
+axes[0].plot(10**lit2.logfreq, lit2.sigma, marker='o', mec='k', ls='', zorder=0,
+                mfc='none', markersize=4, label=f'Ref. {refs["Hoppe1991"]}, 220K') ## Hoppe $\\it{et\ al.}$ (1991), ($Li_{Al}^{\prime\prime}$)
+## Hoppe & Funke (1991) - 298K
+lit5 = pd.read_csv('./production/bdp-Na/Na_unsym_Hoppe1991_298K_lit.csv', names=['logfreq','sigma'])
+axes[0].plot(10**lit5.logfreq, lit5.sigma, marker='^', mec='k', ls='', zorder=0,
+                mfc='none', markersize=4, label=f'Ref. {refs["Hoppe1991"]}, 298K') ## Hoppe $\\it{et\ al.}$ (1991) ($Li_{Al}^{\prime\prime}$)
 
 ## Almond et al (1984) - 237K
 lit1 = pd.read_csv('./production/bdp-Na/Na_unsym_Almond1984_237K_lit.csv', names=['logfreq','sigma'])
-axes[0].scatter(10**lit1.logfreq, lit1.sigma, marker='d', edgecolors='k', 
-                facecolors='k', s=16, label='Ref. 29, 237K') ## Almond $\\it{et\ al.}$ (1984)
-## Hoppe & Funke (1991) - 220K
-lit2 = pd.read_csv('./production/bdp-Na/Na_unsym_Hoppe1991_220K_lit.csv', names=['logfreq','sigma'])
-axes[0].scatter(10**lit2.logfreq, lit2.sigma, marker='o', edgecolors='k', 
-                facecolors='none', s=16, label='Ref. 46, 220K') ## Hoppe $\\it{et\ al.}$ (1991), ($Li_{Al}^{\prime\prime}$)
-
+axes[0].plot(10**lit1.logfreq, lit1.sigma, marker='d', mec='k', ls='', zorder=0,
+                mfc='k', fillstyle='full', markersize=4, label=f'Ref. {refs["Almond1984"]}, 237K') ## Almond $\\it{et\ al.}$ (1984)
 ## Almond (1984) - 296K
 lit3 = pd.read_csv('./production/bdp-Na/Na_unsym_Almond1984_296K_lit.csv', names=['logfreq','sigma'])
-axes[0].scatter(10**lit3.logfreq, lit3.sigma, marker='s', edgecolors='k', 
-                facecolors='k', s=16, label='Ref. 29, 296K') ## Almond $\\it{et\ al.}$ (1984)
-
-## Hoppe & Funke (1991) - 298K
-lit5 = pd.read_csv('./production/bdp-Na/Na_unsym_Hoppe1991_298K_lit.csv', names=['logfreq','sigma'])
-axes[0].scatter(10**lit5.logfreq, lit5.sigma, marker='^', edgecolors='k', 
-                facecolors='none', s=16, label='Ref. 46, 298K') ## Hoppe $\\it{et\ al.}$ (1991) ($Li_{Al}^{\prime\prime}$)
+axes[0].plot(10**lit3.logfreq, lit3.sigma, marker='s', mec='k', ls='', zorder=0, 
+                mfc='k', fillstyle='full', markersize=4, label=f'Ref. {refs["Almond1984"]}, 296K') ## Almond $\\it{et\ al.}$ (1984)
 
 ## make plot pretty
 axes[0].set(xlim=[8e5,6e11], ylim=[6e-4,1.2], xscale='log', yscale='log',
@@ -766,15 +769,15 @@ for i, plane in macro_planes_data.iterrows():
 
 ## 2 literature datasets, Barker (1976) - 300K ## Barker $\\it{et\ al.}$ (1976)
 lit1 = pd.read_csv('./production/beta-Na/Na_120_Barker1976_flux_lit.csv', names=['logfreq','sigma'])
-axes[1].scatter(10**lit1.logfreq, lit1.sigma, marker='D', edgecolors='k', s=16,
-           facecolors='none', label='Ref. 41, 300K, flux')
+axes[1].plot(10**lit1.logfreq, lit1.sigma, marker='D', mec='k', markersize=4, ls='', zorder=0,
+           mfc='none', label=f'Ref. {refs["Barker1976"]}, 300K, flux')
 lit2 = pd.read_csv('./production/beta-Na/Na_120_Barker1976_melt_lit.csv', names=['logfreq','sigma'])
-axes[1].scatter(10**lit2.logfreq, lit2.sigma, marker='s', edgecolors='k', s=16,
-           facecolors='none', label='Ref. 41, 300K, melt') 
+axes[1].plot(10**lit2.logfreq, lit2.sigma, marker='s',mec='k', markersize=4, ls='', zorder=0,
+           mfc='none', label=f'Ref. {refs["Barker1976"]}, 300K, melt') 
 
 ## Kamishima (2015) - 300K # Kamishima $\\it{et\ al.}$ (2015)
-axes[1].scatter(1e7, 0.011692, marker='>', edgecolors='k', facecolors='k', s=16,
-           label='Ref. 28, 300K')
+axes[1].plot(1e7, 0.011692, marker='>', mec='k', markersize=4, ls='', zorder=0,
+           mfc='k', fillstyle='full', label=f'Ref. {refs["Kamishima2015"]}, 300K')
 
 ## make plot pretty
 axes[1].set(xlim=[7e6,6e11], xscale='log', xlabel=r'$\nu=1/t$, Hz')
@@ -848,19 +851,19 @@ for i, plane in macro_planes_data.iterrows():
 
 ## Barker (1976) melt - 300K # Barker $\\it{et\ al.}$ (1976) melt
 lit21 = pd.read_csv('./production/beta-Ag/Ag_120_Barker1976_melt_lit.csv', names=['logfreq','sigma'])
-axes[2].scatter(10**lit21.logfreq, lit21.sigma, marker='s', edgecolors='k', s=16,
-           facecolors='none', label='Ref. 41, 300K, melt')
+axes[2].plot(10**lit21.logfreq, lit21.sigma, marker='s', mec='k', markersize=4, ls='',
+           mfc='none', label=f'Ref. {refs["Barker1976"]}, 300K, melt', zorder=0)
 
 ## 3 samples from Kamishima (2014) - near 300K ## Kamishima $\\it{et\ al.}$ (2014)
 lit22 = pd.read_csv('./production/beta-Ag/Ag_120_Kamishima2014_296K_S1_lit.csv', names=['logfreq','sigma'])
-axes[2].scatter(10**lit22.logfreq, lit22.sigma, marker='o', edgecolors='k', s=16,
-           facecolors='k', label='Ref. 27, 296K, A')
+axes[2].plot(10**lit22.logfreq, lit22.sigma, marker='o', mec='k', markersize=4, ls='',
+           mfc='k', fillstyle='full', label=f'Ref. {refs["Kamishima2014"]}, 296K, A', zorder=0)
 lit23 = pd.read_csv('./production/beta-Ag/Ag_120_Kamishima2014_286K_S2_lit.csv', names=['logfreq','sigma'])
-axes[2].scatter(10**lit23.logfreq, lit23.sigma, marker='^', edgecolors='k', s=16,
-           facecolors='k', label='Ref. 27, 286K, B')
+axes[2].plot(10**lit23.logfreq, lit23.sigma, marker='^', mec='k', markersize=4, ls='',
+           mfc='k', fillstyle='full', label=f'Ref. {refs["Kamishima2014"]}, 286K, B', zorder=0)
 lit24 = pd.read_csv('./production/beta-Ag/Ag_120_Kamishima2014_299K_S3_lit.csv', names=['logfreq','sigma'])
-axes[2].scatter(10**lit24.logfreq, lit24.sigma, marker='v', edgecolors='k', s=16,
-           facecolors='k', label='Ref. 27, 299K, C')
+axes[2].plot(10**lit24.logfreq, lit24.sigma, marker='v', mec='k', markersize=4, ls='',
+           mfc='k', fillstyle='full', label=f'Ref. {refs["Kamishima2014"]}, 299K, C', zorder=0)
 
 
 ## make plot pretty
@@ -885,10 +888,10 @@ start_last = 97500    ## [ps] last time at which to sample CoM MSD
   
 duration = 2500     ## [ps] how long each sampling is
 
-refs_dict = {'Davies(1986)':36, 'Briant(1980)':31, 'Bates(1981)':32,
-             'Whittingham(1972)':50, 'Almond(1984)':29}
+refs_dict = {'Davies(1986)':38, 'Briant(1980)':34, 'Bates(1981)':35,
+             'Whittingham(1972)':55, 'Almond(1984)':32}
 
-beta_refs_dict = {'Ag':48, 'K':50, 'Na':49}
+beta_refs_dict = {'Ag':53, 'K':55, 'Na':54}
 
 # ========== automatic things below this line ==========
 
@@ -897,7 +900,7 @@ starts = np.arange(start_1,start_last,start_step,dtype=float)
 spec=(start_1,start_step,start_last,duration)  
 
 ## pre-load and filter for the same computation conditions right away
-sigmas_msd = pd.read_csv('./sample_data/sigmas_msd.csv')
+sigmas_msd = pd.read_csv('./production/sigmas_msd.csv')
 sigmas_msd.spec = sigmas_msd.spec.apply(eval)   
 sigmas_msd_spec = sigmas_msd.query('spec == @spec')
 
@@ -970,7 +973,7 @@ for f, sym in zip(d_lit_files, ['o','s','D','v','^','<','>']) :
                 mec='k', # if variable2 != 'metal' else hu.metal_colors[var],
                 mfc=(0,0,0,0), marker=sym, linestyle='', markersize=5)
     
-axes[0].set(ylabel=f'$\sigma$T [$\Omega^{{-1}}$ cm$^{{-1}}$ K]', xlabel='1000/T, K$^{-1}$',
+axes[0].set(ylabel='$\sigma$T [$\Omega^{{-1}}$ cm$^{{-1}}$ K]', xlabel='1000/T, K$^{-1}$',
             ylim=[1.5e-2,1.7e3], yscale='log', xlim=[1.3,4.45])
 axes[0].legend(loc='lower left', title=r'Na $\beta^{\prime\prime}$', title_fontsize=10)
 
